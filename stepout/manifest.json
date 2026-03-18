@@ -1,0 +1,38 @@
+{
+  "name": "Step Out – Find Your Dry 10 Minutes",
+  "short_name": "Step Out",
+  "description": "Real-time rain gap finder. Because sometimes you just need to go outside.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0f4ff",
+  "theme_color": "#6366f1",
+  "lang": "en",
+  "categories": ["weather", "utilities", "lifestyle"],
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Find Dry Window",
+      "short_name": "Find Gap",
+      "description": "Jump straight to finding your next dry window",
+      "url": "./?action=find",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

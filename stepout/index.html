@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Step Out – Find Your Dry 10 Minutes. Real-time rain gap finder for when you just need to step outside." />
+  <meta name="theme-color" content="#6366f1" id="theme-color-meta" />
+
+  <!-- PWA Meta -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Step Out" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Step Out – Find Your Dry 10 Minutes" />
+  <meta property="og:description" content="Real-time rain gap finder. Because sometimes you just need to go outside." />
+  <meta property="og:type" content="website" />
+
+  <title>Step Out – Find Your Dry 10 Minutes</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="libs/leaflet.css" />
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Plausible Analytics (privacy-safe) -->
+  <script defer data-domain="stepout.app" src="https://plausible.io/js/script.js"></script>
+</head>
+<body class="theme-auto">
+
+  <!-- Offline Banner -->
+  <div id="offline-banner" class="offline-banner hidden" role="alert">
+    <span id="offline-icon">📡</span>
+    <span id="offline-text" data-i18n="offline_banner">You're offline. Showing cached forecast.</span>
+  </div>
+
+  <!-- Header -->
+  <header class="app-header glass">
+    <div class="header-inner">
+      <div class="logo-group">
+        <div class="logo-icon" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="16" fill="url(#logoGrad)"/>
+            <path d="M16 8C12.686 8 10 10.686 10 14c0 2.21 1.19 4.14 2.97 5.19L16 24l3.03-4.81C20.81 18.14 22 16.21 22 14c0-3.314-2.686-6-6-6z" fill="white" fill-opacity="0.9"/>
+            <circle cx="16" cy="14" r="2.5" fill="url(#logoGrad)"/>
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <h1 class="app-title">Step Out</h1>
+          <p class="app-tagline" data-i18n="tagline">Find Your Dry 10 Minutes</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <select id="lang-selector" class="lang-selector glass-btn" aria-label="Language selector" title="Change language">
+          <option value="en">🇬🇧 EN</option>
+          <option value="fr">🇫🇷 FR</option>
+          <option value="de">🇩🇪 DE</option>
+          <option value="es">🇪🇸 ES</option>
+        </select>
+        <button id="theme-toggle" class="glass-btn icon-btn" aria-label="Toggle dark/light mode" title="Toggle theme">
+          <span id="theme-icon">🌙</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Location Bar -->
+    <div class="location-bar glass-card" id="location-bar">
+      <div class="location-info">
+        <span class="location-icon">📍</span>
+        <span id="location-display" data-i18n="detecting_location">Detecting location...</span>
+      </div>
+      <button id="refresh-location" class="glass-btn small-btn" aria-label="Refresh location" title="Refresh location">
+        <span>↺</span>
+      </button>
+    </div>
+
+    <!-- Current Weather Card -->
+    <section class="weather-card glass-card" id="weather-section" aria-label="Current weather">
+      <!-- Loading Skeleton -->
+      <div class="skeleton-block" id="weather-skeleton">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton-row">
+          <div class="skeleton skeleton-big"></div>
+          <div class="skeleton-col">
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line short"></div>
+            <div class="skeleton skeleton-line"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actual Weather Content -->
+      <div id="weather-content" class="hidden">
+        <div class="weather-header">
+          <h2 data-i18n="current_conditions">Current Conditions</h2>
+          <span id="weather-updated" class="updated-time"></span>
+        </div>
+        <div class="weather-main">
+          <div class="temp-display">
+            <span id="weather-icon" class="weather-emoji" aria-label="Weather condition">🌤️</span>
+            <span id="temp-value" class="temp-value">--°</span>
+          </div>
+          <div class="weather-details">
+            <div class="detail-item">
+              <span class="detail-label" data-i18n="feels_like">Feels like</span>
+              <span id="feels-like" class="detail-value">--°</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label" data-i18n="humidity">Humidity</span>
+              <span id="humidity" class="detail-value">--%</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label" data-i18n="wind">Wind</span>
+              <span id="wind" class="detail-value">-- km/h</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label" data-i18n="cloud_cover">Clouds</span>
+              <span id="cloud-cover" class="detail-value">--%</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label" data-i18n="uv_index">UV Index</span>
+              <span id="uv-index" class="detail-value">--</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label" data-i18n="precipitation">Rain</span>
+              <span id="precipitation" class="detail-value">-- mm</span>
+            </div>
+          </div>
+        </div>
+        <div class="condition-text" id="condition-text"></div>
+      </div>
+
+      <!-- Error State -->
+      <div id="weather-error" class="error-state hidden">
+        <span class="error-emoji">🌀</span>
+        <p data-i18n="weather_confused">The weather is confused. Try again shortly.</p>
+        <button id="retry-weather" class="primary-btn" data-i18n="retry">Try Again</button>
+      </div>
+    </section>
+
+    <!-- Dry Window CTA -->
+    <section class="cta-section" id="cta-section">
+      <button id="find-dry-window" class="primary-btn pulse-btn" aria-label="Find my dry window">
+        <span class="btn-icon">☂️</span>
+        <span data-i18n="find_window">Find My Dry Window</span>
+      </button>
+    </section>
+
+    <!-- Dry Window Result Card -->
+    <section class="dry-window-card glass-card hidden" id="dry-window-section" aria-label="Dry window result" aria-live="polite">
+      <!-- Loading -->
+      <div id="dry-window-skeleton" class="skeleton-block hidden">
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-big-center"></div>
+        <div class="skeleton skeleton-line center"></div>
+      </div>
+
+      <!-- Result -->
+      <div id="dry-window-result" class="hidden">
+        <div class="dry-window-header">
+          <span class="dry-window-icon" id="dw-icon">⛅</span>
+          <h2 data-i18n="dry_window">Your Dry Window</h2>
+        </div>
+        <div class="dry-window-time">
+          <div class="time-display">
+            <span class="time-label" data-i18n="starts_at">Starts at</span>
+            <span id="dw-start-time" class="time-value">--:--</span>
+          </div>
+          <div class="time-sep">→</div>
+          <div class="time-display">
+            <span class="time-label" data-i18n="ends_at">Ends at</span>
+            <span id="dw-end-time" class="time-value">--:--</span>
+          </div>
+        </div>
+        <div class="duration-badge">
+          <span id="dw-duration" class="duration-value">-- min</span>
+          <span class="duration-label" data-i18n="dry_minutes">dry</span>
+        </div>
+        <div class="window-conditions">
+          <div class="window-detail">
+            <span data-i18n="window_cloud">Clouds</span>
+            <strong id="dw-clouds">--%</strong>
+          </div>
+          <div class="window-detail">
+            <span data-i18n="window_wind">Wind</span>
+            <strong id="dw-wind">-- km/h</strong>
+          </div>
+          <div class="window-detail">
+            <span data-i18n="window_score">Score</span>
+            <strong id="dw-score">--/10</strong>
+          </div>
+        </div>
+        <div class="sarcastic-message" id="dw-message"></div>
+        <div id="dw-countdown" class="countdown-display hidden"></div>
+      </div>
+
+      <!-- No Window Found -->
+      <div id="dry-window-none" class="hidden">
+        <span class="error-emoji">🌧️</span>
+        <p id="dry-window-none-text" data-i18n="no_dry_window">No dry window in the next 3 hours. Maybe try indoor hobbies.</p>
+      </div>
+    </section>
+
+    <!-- Precipitation Timeline -->
+    <section class="timeline-card glass-card hidden" id="timeline-section" aria-label="Precipitation timeline">
+      <h3 data-i18n="next_hours">Next 3 Hours</h3>
+      <div id="timeline-chart" class="timeline-chart" role="img" aria-label="Precipitation chart"></div>
+      <div class="timeline-legend">
+        <span class="legend-dry" data-i18n="legend_dry">Dry</span>
+        <span class="legend-rain" data-i18n="legend_rain">Rain</span>
+      </div>
+    </section>
+
+    <!-- Map Section -->
+    <section class="map-section glass-card" id="map-section" aria-label="Weather map">
+      <div class="map-header">
+        <h3 data-i18n="cloud_map">Cloud Map</h3>
+        <div class="map-controls">
+          <button id="toggle-satellite" class="glass-btn small-btn" data-i18n="satellite">Satellite</button>
+          <button id="toggle-clouds" class="glass-btn small-btn active" data-i18n="clouds">Clouds</button>
+        </div>
+      </div>
+      <div id="map-container" class="map-container"></div>
+      <div id="map-attribution" class="map-attribution"></div>
+    </section>
+
+    <!-- Hourly Forecast -->
+    <section class="forecast-section glass-card hidden" id="forecast-section" aria-label="Hourly forecast">
+      <h3 data-i18n="hourly_forecast">Hourly Forecast</h3>
+      <div id="hourly-scroll" class="hourly-scroll"></div>
+    </section>
+
+  </main>
+
+  <!-- PWA Install Prompt -->
+  <div id="install-prompt" class="install-prompt glass-card hidden" role="dialog" aria-label="Install app">
+    <div class="install-content">
+      <span class="install-icon">📲</span>
+      <div class="install-text">
+        <strong data-i18n="install_title">Install Step Out</strong>
+        <p data-i18n="install_desc">Add to home screen for the full experience.</p>
+      </div>
+    </div>
+    <div class="install-actions">
+      <button id="install-accept" class="primary-btn small" data-i18n="install_yes">Install</button>
+      <button id="install-dismiss" class="ghost-btn small" data-i18n="install_no">Not now</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p>
+      <span data-i18n="footer_text">Step Out</span> &middot;
+      <span id="data-source-label" class="data-source"></span> &middot;
+      <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a>
+    </p>
+    <p class="version-info" id="version-info">v1.0.0</p>
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script src="libs/leaflet.js"></script>
+
+  <!-- App Components -->
+  <script src="components/ui.js"></script>
+  <script src="components/weather.js"></script>
+  <script src="components/drywindow.js"></script>
+  <script src="components/map.js"></script>
+
+  <!-- Main App -->
+  <script src="app.js"></script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('[SW] Registered:', reg.scope))
+          .catch(err => console.warn('[SW] Registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
