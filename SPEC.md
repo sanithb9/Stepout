@@ -1,8 +1,8 @@
 # Step Out – App Specification
 
-**Version:** 1.0.0
-**Last Updated:** 2026-03-18
-**Status:** MVP Complete
+**Version:** 1.0.1
+**Last Updated:** 2026-03-19
+**Status:** MVP Complete – GitHub Pages Deployed
 
 ---
 
@@ -31,6 +31,9 @@
 - **Architecture:** Zero-backend, client-only
 - **Build system:** None (vanilla HTML/CSS/JS)
 - **PWA:** Service worker with offline caching
+- **CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`) — auto-deploys on push to `main`
+- **Served path:** `stepout/` subfolder is the site root on GitHub Pages
+- **URL pattern:** `https://<username>.github.io/<repo>/`
 
 ### 2.2 File Structure
 
@@ -279,6 +282,11 @@ stepout/
 ---
 
 ## 12. Changelog
+
+### v1.0.1 – 2026-03-19
+- Added GitHub Actions workflow for automated GitHub Pages deployment
+- Created `main` branch as default deployment source
+- `stepout/` subfolder served as site root on Pages
 
 ### v1.0.0 – 2026-03-18
 - Initial MVP release
