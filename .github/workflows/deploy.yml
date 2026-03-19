@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - Main
       - claude/build-stepout-pwa-MUvKO
   workflow_dispatch:
 
