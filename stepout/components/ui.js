@@ -196,7 +196,7 @@ const UIState = (() => {
 
   return {
     showSkeleton, showContent, showError,
-    showSection, hideSection,
+    showSection, hideSection, setVisible,
     showOfflineBanner, setDataSource,
   };
 })();
@@ -398,9 +398,11 @@ const GeoHelper = (() => {
     // Primary: Geoapify free tier (no key needed for basic usage)
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 5000);
       const res = await fetch(url, {
         headers: { 'User-Agent': 'StepOut/1.0 (stepout.app)' },
-        signal: AbortSignal.timeout(5000),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error('Nominatim failed');
       const data = await res.json();

@@ -1,6 +1,6 @@
 # Step Out – App Specification
 
-**Version:** 1.0.1
+**Version:** 1.0.2
 **Last Updated:** 2026-03-19
 **Status:** MVP Complete – GitHub Pages Deployed
 
@@ -282,6 +282,10 @@ stepout/
 ---
 
 ## 12. Changelog
+
+### v1.0.2 – 2026-03-19
+- Fix: `UIState.setVisible` not exported — caused TypeError when clicking "Find My Dry Window"
+- Fix: `AbortSignal.timeout()` replaced with manual `AbortController` for Safari < 16 compatibility
 
 ### v1.0.1 – 2026-03-19
 - Added GitHub Actions workflow for automated GitHub Pages deployment

@@ -8,6 +8,14 @@ const WeatherAPI = (() => {
   const CACHE_KEY = 'stepout_weather_cache';
   const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+  // Safari < 16 doesn't support AbortSignal.timeout — use manual controller
+  function fetchWithTimeout(url, options = {}, ms = 8000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { ...options, signal: controller.signal })
+      .finally(() => clearTimeout(timer));
+  }
+
   // --- Open-Meteo WMO weather code to emoji/description ---
   const WMO_MAP = {
     0:  { emoji: '☀️',  desc: 'Clear sky' },
@@ -67,7 +75,7 @@ const WeatherAPI = (() => {
     url.searchParams.set('forecast_days', '2');
     url.searchParams.set('timezone', 'auto');
 
-    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(8000) });
+    const res = await fetchWithTimeout(url.toString(), {}, 8000);
     if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
     const data = await res.json();
 
@@ -133,10 +141,9 @@ const WeatherAPI = (() => {
   // =========================================================
   async function fetchMETNorway(lat, lon) {
     const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat}&lon=${lon}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       headers: { 'User-Agent': 'StepOut/1.0 (example@example.com)' },
-      signal: AbortSignal.timeout(8000),
-    });
+    }, 8000);
     if (!res.ok) throw new Error(`MET Norway HTTP ${res.status}`);
     const data = await res.json();
 
@@ -226,7 +233,7 @@ const WeatherAPI = (() => {
     if (!apiKey) throw new Error('OWM: no API key configured');
 
     const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&cnt=40`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const res = await fetchWithTimeout(url, {}, 8000);
     if (!res.ok) throw new Error(`OWM HTTP ${res.status}`);
     const data = await res.json();
 
