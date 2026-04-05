@@ -1,6 +1,6 @@
 # Step Out – App Specification
 
-**Version:** 1.0.2
+**Version:** 1.0.3
 **Last Updated:** 2026-03-19
 **Status:** MVP Complete – GitHub Pages Deployed
 
@@ -282,6 +282,14 @@ stepout/
 ---
 
 ## 12. Changelog
+
+### v1.0.3 – 2026-04-05
+- Fix: App no longer blocks on geolocation — loads with default/cached location immediately
+- Fix: Geolocation now runs in background and updates weather when resolved
+- Fix: Skeleton shimmer now visible in dark mode (was invisible — colors too similar)
+- Fix: "Find My Dry Window" button now responsive even before geo resolves
+- Fix: Geolocation timeout reduced from 10s to 5s
+- ci: Node.js 24 opt-in for GitHub Actions
 
 ### v1.0.2 – 2026-03-19
 - Fix: `UIState.setVisible` not exported — caused TypeError when clicking "Find My Dry Window"

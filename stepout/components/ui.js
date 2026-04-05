@@ -389,7 +389,7 @@ const GeoHelper = (() => {
       navigator.geolocation.getCurrentPosition(
         pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
         err => reject(err),
-        { timeout: 10000, maximumAge: 300000, enableHighAccuracy: false }
+        { timeout: 5000, maximumAge: 300000, enableHighAccuracy: false }
       );
     });
   }

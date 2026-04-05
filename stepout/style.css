@@ -823,7 +823,11 @@ body::before {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg) 50%, var(--bg-2) 75%);
+  background: linear-gradient(90deg,
+    rgba(99,102,241,0.08) 25%,
+    rgba(99,102,241,0.18) 50%,
+    rgba(99,102,241,0.08) 75%
+  );
   background-size: 200% 100%;
   border-radius: 8px;
   animation: shimmer 1.5s ease-in-out infinite;
