@@ -1,29 +1,167 @@
-/**
- * sw.js — Kill switch build
- * Clears all caches, unregisters self, and reloads clients.
- * This breaks the stale-SW deadlock so the app loads fresh.
- */
+/* ============================================================
+   sw.js – Step Out Service Worker v1.0.4
+   Fresh install after kill-switch cleared stale caches.
+   ============================================================ */
 
-self.addEventListener('install', () => {
-  console.log('[SW] Kill switch installing — skipping wait');
+const CACHE_VERSION = 'v1.0.4';
+const STATIC_CACHE  = `stepout-static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `stepout-dynamic-${CACHE_VERSION}`;
+const API_CACHE     = `stepout-api-${CACHE_VERSION}`;
+
+const PRECACHE_ASSETS = [
+  './',
+  './index.html',
+  './offline.html',
+  './style.css',
+  './app.js',
+  './manifest.json',
+  './libs/leaflet.js',
+  './libs/leaflet.css',
+  './components/ui.js',
+  './components/weather.js',
+  './components/drywindow.js',
+  './components/map.js',
+  './lang/en.json',
+  './lang/fr.json',
+  './lang/de.json',
+  './lang/es.json',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
+  './assets/logo.png',
+];
+
+const API_HOSTS = [
+  'api.open-meteo.com',
+  'api.met.no',
+  'nominatim.openstreetmap.org',
+];
+
+const API_CACHE_MAX_AGE = 30 * 60 * 1000;
+
+// ── Install ──────────────────────────────────────────────────
+self.addEventListener('install', event => {
+  // Skip waiting immediately — don't block on precaching
   self.skipWaiting();
+
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then(cache =>
+      Promise.allSettled(
+        PRECACHE_ASSETS.map(url =>
+          cache.add(url).catch(err =>
+            console.warn('[SW] Failed to cache', url, err.message)
+          )
+        )
+      )
+    ).then(() => console.log('[SW] Install complete:', CACHE_VERSION))
+  );
 });
 
+// ── Activate ─────────────────────────────────────────────────
 self.addEventListener('activate', event => {
-  console.log('[SW] Kill switch activating — clearing all caches');
+  const valid = [STATIC_CACHE, DYNAMIC_CACHE, API_CACHE];
   event.waitUntil(
     caches.keys()
-      .then(keys => {
-        console.log('[SW] Deleting caches:', keys);
-        return Promise.all(keys.map(k => caches.delete(k)));
-      })
-      .then(() => self.registration.unregister())
-      .then(() => {
-        console.log('[SW] Unregistered. Reloading all clients.');
-        return self.clients.matchAll({ type: 'window' });
-      })
-      .then(clients => {
-        clients.forEach(client => client.navigate(client.url));
-      })
+      .then(keys => Promise.all(
+        keys.filter(k => !valid.includes(k)).map(k => {
+          console.log('[SW] Deleting old cache:', k);
+          return caches.delete(k);
+        })
+      ))
+      .then(() => self.clients.claim())
+      .then(() => console.log('[SW] Activated:', CACHE_VERSION))
   );
+});
+
+// ── Fetch ─────────────────────────────────────────────────────
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  if (request.method !== 'GET') return;
+  if (url.protocol === 'chrome-extension:') return;
+
+  if (isApiRequest(url)) {
+    event.respondWith(handleApiRequest(request));
+    return;
+  }
+  if (isMapTile(url)) {
+    event.respondWith(handleTileRequest(request));
+    return;
+  }
+  event.respondWith(handleStaticRequest(request));
+});
+
+// ── Network-first for API ─────────────────────────────────────
+async function handleApiRequest(request) {
+  const cache = await caches.open(API_CACHE);
+  try {
+    const response = await fetchWithTimeout(request.clone(), 8000);
+    if (response.ok) {
+      const headers = new Headers(response.headers);
+      headers.set('sw-cached-at', Date.now().toString());
+      const body = await response.clone().arrayBuffer();
+      cache.put(request, new Response(body, { status: response.status, headers }));
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return new Response(JSON.stringify({ error: 'offline' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}
+
+// ── Cache-first for map tiles ─────────────────────────────────
+async function handleTileRequest(request) {
+  const cache = await caches.open(DYNAMIC_CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  try {
+    const response = await fetchWithTimeout(request, 5000);
+    if (response.ok) cache.put(request, response.clone());
+    return response;
+  } catch {
+    return new Response('', { status: 503 });
+  }
+}
+
+// ── Cache-first for static assets ────────────────────────────
+async function handleStaticRequest(request) {
+  const staticCache = await caches.open(STATIC_CACHE);
+  const cached = await staticCache.match(request);
+  if (cached) return cached;
+  try {
+    const response = await fetchWithTimeout(request, 6000);
+    if (response.ok) {
+      const dynCache = await caches.open(DYNAMIC_CACHE);
+      dynCache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    if (request.mode === 'navigate') {
+      const offline = await staticCache.match('./offline.html');
+      if (offline) return offline;
+    }
+    return new Response('Offline', { status: 503 });
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function isApiRequest(url) {
+  return API_HOSTS.some(h => url.hostname === h);
+}
+function isMapTile(url) {
+  return url.hostname.includes('tile.openstreetmap.org') ||
+    url.hostname.includes('gibs.earthdata.nasa.gov') ||
+    url.hostname.includes('arcgisonline.com');
+}
+function fetchWithTimeout(request, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(request, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
