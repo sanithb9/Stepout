@@ -331,13 +331,16 @@ const WeatherAPI = (() => {
 
     for (const src of sources) {
       try {
+        if (window.DBG) window.DBG.info('Trying ' + src.name + '...');
         console.log(`[Weather] Trying ${src.name}...`);
         const result = await src.fn();
         saveToCache(result);
+        if (window.DBG) window.DBG.ok(src.name + ' OK');
         console.log(`[Weather] Success: ${src.name}`);
         return result;
       } catch (err) {
         console.warn(`[Weather] ${src.name} failed:`, err.message);
+        if (window.DBG) window.DBG.err(src.name + ' failed: ' + err.message);
       }
     }
 
@@ -345,6 +348,7 @@ const WeatherAPI = (() => {
     const cached = loadFromCache();
     if (cached) {
       console.log('[Weather] Using cached data');
+      if (window.DBG) window.DBG.info('Using cached weather');
       return { ...cached, fromCache: true };
     }
 
