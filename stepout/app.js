@@ -71,13 +71,16 @@ const App = (() => {
     try { Theme.init(); DBG.ok('Theme OK'); }
     catch(e) { DBG.err('Theme: ' + e.message); }
 
-    // Language
+    // Language — give it 3s max, then continue regardless
     try {
       const lang = I18n.detectLanguage();
       DBG.info('Lang detected: ' + lang);
-      await I18n.load(lang);
+      await Promise.race([
+        I18n.load(lang),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('i18n timeout')), 3000))
+      ]);
       DBG.ok('i18n loaded: ' + lang);
-    } catch(e) { DBG.err('i18n: ' + e.message); }
+    } catch(e) { DBG.err('i18n: ' + e.message + ' — continuing anyway'); }
 
     // PWA
     try { PWAInstall.init(); DBG.ok('PWA init OK'); }

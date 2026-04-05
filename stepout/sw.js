@@ -3,7 +3,7 @@
    Caches static assets + API responses, serves offline fallback
    ============================================================ */
 
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v1.0.4';
 const STATIC_CACHE = `stepout-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `stepout-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `stepout-api-${CACHE_VERSION}`;
