@@ -1,33 +1,37 @@
 /* ============================================================
-   sw.js – Step Out Service Worker v1.0.4
-   Fresh install after kill-switch cleared stale caches.
+   sw.js – Step Out Service Worker v1.0.5
+   - Never caches index.html (always network-first)
+   - Never caches lang/*.json (always network-first)
+   - Uses versioned URLs for JS/CSS assets
    ============================================================ */
 
-const CACHE_VERSION = 'v1.0.4';
+const CACHE_VERSION = 'v1.0.5';
 const STATIC_CACHE  = `stepout-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `stepout-dynamic-${CACHE_VERSION}`;
 const API_CACHE     = `stepout-api-${CACHE_VERSION}`;
 
+// NOTE: index.html and lang/*.json are intentionally excluded —
+// they use network-first so stale content never blocks the app.
 const PRECACHE_ASSETS = [
-  './',
-  './index.html',
   './offline.html',
   './style.css',
-  './app.js',
+  './app.js?v=1.0.5',
   './manifest.json',
-  './libs/leaflet.js',
-  './libs/leaflet.css',
-  './components/ui.js',
-  './components/weather.js',
-  './components/drywindow.js',
-  './components/map.js',
-  './lang/en.json',
-  './lang/fr.json',
-  './lang/de.json',
-  './lang/es.json',
+  './libs/leaflet.js?v=1.0.5',
+  './libs/leaflet.css?v=1.0.5',
+  './components/ui.js?v=1.0.5',
+  './components/weather.js?v=1.0.5',
+  './components/drywindow.js?v=1.0.5',
+  './components/map.js?v=1.0.5',
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/logo.png',
+
+  // Lang files with version so old cached versions are ignored
+  './lang/en.json?v=1.0.5',
+  './lang/fr.json?v=1.0.5',
+  './lang/de.json?v=1.0.5',
+  './lang/es.json?v=1.0.5',
 ];
 
 const API_HOSTS = [
@@ -86,6 +90,11 @@ self.addEventListener('fetch', event => {
   }
   if (isMapTile(url)) {
     event.respondWith(handleTileRequest(request));
+    return;
+  }
+  // HTML navigations and lang files: always network-first, never serve stale
+  if (request.mode === 'navigate' || isLangFile(url)) {
+    event.respondWith(handleNetworkFirst(request));
     return;
   }
   event.respondWith(handleStaticRequest(request));
@@ -147,6 +156,26 @@ async function handleStaticRequest(request) {
   }
 }
 
+// ── Network-first (HTML + lang files) ────────────────────────
+async function handleNetworkFirst(request) {
+  try {
+    const response = await fetchWithTimeout(request, 6000);
+    if (response.ok) {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = (await caches.open(DYNAMIC_CACHE)).match(request);
+    if (cached) return cached;
+    if (request.mode === 'navigate') {
+      const offline = await (await caches.open(STATIC_CACHE)).match('./offline.html');
+      if (offline) return offline;
+    }
+    return new Response('Offline', { status: 503 });
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 function isApiRequest(url) {
   return API_HOSTS.some(h => url.hostname === h);
@@ -155,6 +184,9 @@ function isMapTile(url) {
   return url.hostname.includes('tile.openstreetmap.org') ||
     url.hostname.includes('gibs.earthdata.nasa.gov') ||
     url.hostname.includes('arcgisonline.com');
+}
+function isLangFile(url) {
+  return url.pathname.includes('/lang/') && url.pathname.endsWith('.json');
 }
 function fetchWithTimeout(request, ms) {
   const ctrl = new AbortController();
