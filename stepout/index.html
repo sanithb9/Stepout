@@ -20,6 +20,55 @@
 
   <title>Step Out – Find Your Dry 10 Minutes</title>
 
+  <!-- ═══════════════════════════════════════════════════════
+       INLINE BOOT SCRIPT — runs before ANY external JS/CSS.
+       Works even if the service worker serves old cached files.
+       ═══════════════════════════════════════════════════════ -->
+  <script>
+    // This version stamp is checked by the debug panel
+    window.__STEPOUT_HTML_VER = '1.0.5';
+
+    // ── Global error capture ──────────────────────────────
+    window.__bootErrors = [];
+    window.onerror = function(msg, src, line, col, err) {
+      const e = '[JS ERROR] ' + msg + ' @ ' + (src||'?').split('/').pop() + ':' + line;
+      window.__bootErrors.push(e);
+      console.error(e);
+      if (window.DBG) window.DBG.err(e);
+    };
+    window.onunhandledrejection = function(ev) {
+      const e = '[UNHANDLED PROMISE] ' + (ev.reason?.message || ev.reason || 'unknown');
+      window.__bootErrors.push(e);
+      console.error(e);
+      if (window.DBG) window.DBG.err(e);
+    };
+
+    // ── Hard-reset helper (clears SW + caches + reloads) ─
+    window.__hardReset = async function() {
+      const btn = document.getElementById('__reset-btn');
+      if (btn) btn.textContent = 'Resetting…';
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+      } catch(e) { console.warn('reset error', e); }
+      location.reload(true);
+    };
+
+    // ── Script-load progress tracker ─────────────────────
+    window.__scriptLoaded = function(name) {
+      console.log('[BOOT] loaded: ' + name);
+      if (window.DBG) window.DBG.ok('loaded: ' + name);
+      const el = document.getElementById('__boot-status');
+      if (el) el.textContent = 'Loading: ' + name + '…';
+    };
+  </script>
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="libs/leaflet.css" />
   <!-- App Styles -->
@@ -28,7 +77,7 @@
   <!-- Plausible Analytics (privacy-safe) -->
   <script defer data-domain="stepout.app" src="https://plausible.io/js/script.js"></script>
 </head>
-<body class="theme-auto">
+<body class="theme-auto" style="padding-top:38px">
 
   <!-- Offline Banner -->
   <div id="offline-banner" class="offline-banner hidden" role="alert">
@@ -269,17 +318,34 @@
     <p class="version-info" id="version-info">v1.0.0</p>
   </footer>
 
-  <!-- Leaflet JS -->
-  <script src="libs/leaflet.js"></script>
+  <!-- ═══════════════════════════════════════════════════════
+       HARD RESET BUTTON — always visible, pure inline HTML/JS.
+       Works even when the service worker serves old cached files.
+       ═══════════════════════════════════════════════════════ -->
+  <div id="__reset-bar" style="position:fixed;top:0;left:0;right:0;z-index:999999;background:#1a1a2e;padding:6px 12px;display:flex;align-items:center;gap:8px;font:13px system-ui,sans-serif;border-bottom:2px solid #6366f1">
+    <span style="color:#aaa;flex:1" id="__boot-status">Loading…</span>
+    <span style="color:#888;font-size:11px" id="__html-ver">html:?</span>
+    <button id="__reset-btn" onclick="window.__hardReset()" style="background:#ef4444;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:12px">Reset App</button>
+  </div>
+  <script>
+    // Show current HTML version in the reset bar
+    (function() {
+      var v = document.getElementById('__html-ver');
+      if (v) v.textContent = 'html:' + (window.__STEPOUT_HTML_VER || '?');
+    })();
+  </script>
 
-  <!-- App Components -->
-  <script src="components/ui.js"></script>
-  <script src="components/weather.js"></script>
-  <script src="components/drywindow.js"></script>
-  <script src="components/map.js"></script>
+  <!-- Leaflet JS -->
+  <script src="libs/leaflet.js" onload="window.__scriptLoaded('leaflet')" onerror="window.__bootErrors&&window.__bootErrors.push('FAILED:leaflet')"></script>
+
+  <!-- App Components (each tracked) -->
+  <script src="components/ui.js" onload="window.__scriptLoaded('ui.js')" onerror="window.__bootErrors&&window.__bootErrors.push('FAILED:ui.js')"></script>
+  <script src="components/weather.js" onload="window.__scriptLoaded('weather.js')" onerror="window.__bootErrors&&window.__bootErrors.push('FAILED:weather.js')"></script>
+  <script src="components/drywindow.js" onload="window.__scriptLoaded('drywindow.js')" onerror="window.__bootErrors&&window.__bootErrors.push('FAILED:drywindow.js')"></script>
+  <script src="components/map.js" onload="window.__scriptLoaded('map.js')" onerror="window.__bootErrors&&window.__bootErrors.push('FAILED:map.js')"></script>
 
   <!-- Main App -->
-  <script src="app.js"></script>
+  <script src="app.js" onload="window.__scriptLoaded('app.js')" onerror="window.__bootErrors&&window.__bootErrors.push('FAILED:app.js')"></script>
 
   <!-- Service Worker Registration -->
   <script>

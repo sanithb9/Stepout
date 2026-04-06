@@ -1,5 +1,5 @@
 /* ============================================================
-   app.js – Step Out PWA v1.0.4-debug
+   app.js – Step Out PWA v1.0.5-debug
    ============================================================ */
 'use strict';
 
@@ -8,10 +8,11 @@ const DBG = (() => {
   let list;
   function init() {
     const panel = document.createElement('div');
-    panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:45vh;overflow-y:auto;background:rgba(0,0,0,0.92);color:#0f0;font:12px/1.5 monospace;z-index:99999;padding:8px;border-top:2px solid #0f0';
+    // Sit above the reset bar (reset bar is 34px tall)
+    panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow-y:auto;background:rgba(0,0,0,0.93);color:#0f0;font:12px/1.5 monospace;z-index:99998;padding:8px 8px 8px 8px;border-top:2px solid #0f0';
     const hdr = document.createElement('div');
     hdr.style.cssText = 'display:flex;justify-content:space-between;font-weight:bold;margin-bottom:4px;color:#fff';
-    hdr.innerHTML = 'Step Out Debug <button onclick="this.closest(\'div\').parentElement.remove()" style="background:#555;color:#fff;border:none;padding:2px 8px;cursor:pointer;border-radius:3px">✕</button>';
+    hdr.innerHTML = 'Step Out Debug v1.0.5 <button onclick="this.closest(\'div\').parentElement.remove()" style="background:#555;color:#fff;border:none;padding:2px 8px;cursor:pointer;border-radius:3px">✕</button>';
     list = document.createElement('div');
     panel.appendChild(hdr);
     panel.appendChild(list);
@@ -44,17 +45,42 @@ const App = (() => {
     weatherData: null,
     dryWindowResult: null,
     isOnline: navigator.onLine,
-    version: '1.0.4-debug',
+    version: '1.0.5-debug',
   };
 
   async function init() {
     DBG.init();
-    DBG.info('init — online:' + navigator.onLine + ' ua:' + navigator.userAgent.slice(0,40));
+
+    // Immediately flush any boot errors captured by inline script
+    if (window.__bootErrors && window.__bootErrors.length) {
+      window.__bootErrors.forEach(e => DBG.err('BOOT: ' + e));
+    }
+
+    DBG.info('app.js v1.0.5 running');
+    DBG.info('html ver: ' + (window.__STEPOUT_HTML_VER || 'UNKNOWN — old SW serving cached index.html'));
+    DBG.info('online:' + navigator.onLine + ' ua:' + navigator.userAgent.slice(0,50));
+
+    // Update reset bar status
+    const bootSt = document.getElementById('__boot-status');
+    if (bootSt) bootSt.textContent = 'app.js v1.0.5 running';
+
+    // Heartbeat — proves the event loop is alive every second for 12s
+    let hbCount = 0;
+    const hbTimer = setInterval(() => {
+      hbCount++;
+      DBG.info('heartbeat ' + hbCount + 's');
+      if (hbCount >= 12) clearInterval(hbTimer);
+    }, 1000);
 
     // SW status
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
-        DBG.info('SW registrations: ' + regs.length + (regs.map(r=>' '+r.scope)));
+        const scopes = regs.map(r => r.scope.replace(location.origin,''));
+        DBG.info('SW regs: ' + regs.length + ' ' + scopes.join(' '));
+        regs.forEach(r => {
+          const sw = r.installing || r.waiting || r.active;
+          if (sw) DBG.info('SW state: ' + sw.state + ' scope:' + r.scope.replace(location.origin,''));
+        });
       });
     }
 
@@ -63,24 +89,37 @@ const App = (() => {
 
     try { Theme.init(); DBG.ok('Theme'); } catch(e) { DBG.err('Theme: '+e.message); }
 
-    // i18n with 3s timeout
-    try {
-      const lang = I18n.detectLanguage();
-      DBG.info('i18n lang: ' + lang);
-      await Promise.race([
-        I18n.load(lang),
-        new Promise((_,r) => setTimeout(() => r(new Error('i18n timeout')), 3000)),
-      ]);
-      DBG.ok('i18n loaded');
-    } catch(e) { DBG.err('i18n: ' + e.message); }
+    // ── i18n: NON-BLOCKING ─────────────────────────────────
+    // Do NOT await — if SW deadlocks the fetch, the rest of the app still loads.
+    const lang = (() => { try { return I18n.detectLanguage(); } catch(e) { DBG.err('detectLang: '+e.message); return 'en'; } })();
+    DBG.info('i18n lang: ' + lang + ' (loading in background, not blocking)');
+
+    // Start the fetch but don't await it here
+    const i18nPromise = Promise.race([
+      I18n.load(lang),
+      new Promise((_,r) => {
+        setTimeout(() => {
+          DBG.err('i18n TIMEOUT after 4s — fetch hung (likely stale SW). Tap Reset App!');
+          r(new Error('i18n timeout'));
+        }, 4000);
+      }),
+    ]).then(() => {
+      DBG.ok('i18n loaded: ' + lang);
+    }).catch(e => {
+      DBG.err('i18n failed: ' + e.message);
+    });
+
+    // ── Continue immediately without waiting for i18n ─────
+    DBG.info('skipping i18n await — continuing boot');
 
     try { PWAInstall.init(); DBG.ok('PWA'); } catch(e) { DBG.err('PWA: '+e.message); }
 
     window.addEventListener('online',  handleOnline);
     window.addEventListener('offline', handleOffline);
     UIState.showOfflineBanner(!navigator.onLine);
+    DBG.ok('events: online/offline');
     bindEvents();
-    DBG.ok('events bound');
+    DBG.ok('events: UI bound');
 
     const cached = GeoHelper.getCached();
     if (cached) {
@@ -89,17 +128,28 @@ const App = (() => {
       DBG.ok('cached loc: ' + cached.name);
     } else {
       setLocationDisplay('London, UK (default)');
-      DBG.info('using default: London');
+      DBG.info('default: London');
     }
 
-    DBG.info('fetching weather for ' + state.lat.toFixed(3) + ',' + state.lon.toFixed(3));
+    DBG.info('fetchWeather(' + state.lat.toFixed(3) + ',' + state.lon.toFixed(3) + ')');
     fetchAndRenderWeather(state.lat, state.lon);
 
-    try { AppMap.init(state.lat, state.lon); DBG.ok('map init'); }
+    DBG.info('map init…');
+    try { AppMap.init(state.lat, state.lon); DBG.ok('map init OK'); }
     catch(e) { DBG.err('map: ' + e.message); }
 
     tryGeolocation();
     trackEvent('app_open');
+
+    // After 5s, hide the reset bar if everything seems fine
+    // (user can still tap it if needed)
+    setTimeout(() => {
+      const bar = document.getElementById('__reset-bar');
+      if (bar && state.weatherData) {
+        bar.style.opacity = '0.4';
+        bar.style.fontSize = '11px';
+      }
+    }, 5000);
   }
 
   async function tryGeolocation() {

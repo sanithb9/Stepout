@@ -21,15 +21,29 @@ const I18n = (() => {
 
   async function load(lang) {
     if (!SUPPORTED.includes(lang)) lang = 'en';
+    const dbg = window.DBG;
+    const url = `lang/${lang}.json?v=1.0.5`;
+    if (dbg) dbg.info('i18n fetch: ' + url);
     try {
-      const res = await fetch(`lang/${lang}.json?v=1.0`);
+      if (dbg) dbg.info('i18n calling fetch()…');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => {
+        if (dbg) dbg.err('i18n fetch AbortController timeout after 3.5s');
+        controller.abort();
+      }, 3500);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (dbg) dbg.info('i18n fetch response: HTTP ' + res.status + ' ok:' + res.ok);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (dbg) dbg.info('i18n parsing JSON…');
       strings = await res.json();
       currentLang = lang;
       localStorage.setItem('stepout_lang', lang);
       applyToDOM();
+      if (dbg) dbg.ok('i18n JSON parsed & DOM applied: ' + lang);
       console.log(`[i18n] Loaded: ${lang}`);
     } catch (e) {
+      if (dbg) dbg.err('i18n load error: ' + e.message + ' (name:' + e.name + ')');
       console.warn(`[i18n] Failed to load ${lang}:`, e.message);
       if (lang !== 'en') await load('en');
     }
