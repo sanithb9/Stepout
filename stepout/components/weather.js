@@ -12,7 +12,8 @@ const WeatherAPI = (() => {
   function fetchWithTimeout(url, options = {}, ms = 8000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { ...options, signal: controller.signal })
+    // Use window.fetch explicitly to avoid shadowing by local `fetch` function names
+    return window.fetch(url, { ...options, signal: controller.signal })
       .finally(() => clearTimeout(timer));
   }
 
@@ -322,7 +323,7 @@ const WeatherAPI = (() => {
   // =========================================================
   // Public: fetch with fallback chain
   // =========================================================
-  async function fetch(lat, lon) {
+  async function fetchWeather(lat, lon) {
     const sources = [
       { name: 'Open-Meteo', fn: () => fetchOpenMeteo(lat, lon) },
       { name: 'MET Norway', fn: () => fetchMETNorway(lat, lon) },
@@ -360,7 +361,7 @@ const WeatherAPI = (() => {
     return loadFromCache();
   }
 
-  return { fetch, getCached, getWMO };
+  return { fetch: fetchWeather, getCached, getWMO };
 })();
 
 window.WeatherAPI = WeatherAPI;

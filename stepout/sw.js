@@ -1,11 +1,11 @@
 /* ============================================================
-   sw.js – Step Out Service Worker v1.0.5
+   sw.js – Step Out Service Worker v1.0.6
    - Never caches index.html (always network-first)
    - Never caches lang/*.json (always network-first)
    - Uses versioned URLs for JS/CSS assets
    ============================================================ */
 
-const CACHE_VERSION = 'v1.0.5';
+const CACHE_VERSION = 'v1.0.6';
 const STATIC_CACHE  = `stepout-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `stepout-dynamic-${CACHE_VERSION}`;
 const API_CACHE     = `stepout-api-${CACHE_VERSION}`;
@@ -15,23 +15,23 @@ const API_CACHE     = `stepout-api-${CACHE_VERSION}`;
 const PRECACHE_ASSETS = [
   './offline.html',
   './style.css',
-  './app.js?v=1.0.5',
+  './app.js?v=1.0.6',
   './manifest.json',
-  './libs/leaflet.js?v=1.0.5',
-  './libs/leaflet.css?v=1.0.5',
-  './components/ui.js?v=1.0.5',
-  './components/weather.js?v=1.0.5',
-  './components/drywindow.js?v=1.0.5',
-  './components/map.js?v=1.0.5',
+  './libs/leaflet.js?v=1.0.6',
+  './libs/leaflet.css?v=1.0.6',
+  './components/ui.js?v=1.0.6',
+  './components/weather.js?v=1.0.6',
+  './components/drywindow.js?v=1.0.6',
+  './components/map.js?v=1.0.6',
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/logo.png',
 
   // Lang files with version so old cached versions are ignored
-  './lang/en.json?v=1.0.5',
-  './lang/fr.json?v=1.0.5',
-  './lang/de.json?v=1.0.5',
-  './lang/es.json?v=1.0.5',
+  './lang/en.json?v=1.0.6',
+  './lang/fr.json?v=1.0.6',
+  './lang/de.json?v=1.0.6',
+  './lang/es.json?v=1.0.6',
 ];
 
 const API_HOSTS = [

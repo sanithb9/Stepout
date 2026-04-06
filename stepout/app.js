@@ -1,5 +1,5 @@
 /* ============================================================
-   app.js – Step Out PWA v1.0.5-debug
+   app.js – Step Out PWA v1.0.6-debug
    ============================================================ */
 'use strict';
 
@@ -12,7 +12,7 @@ const DBG = (() => {
     panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow-y:auto;background:rgba(0,0,0,0.93);color:#0f0;font:12px/1.5 monospace;z-index:99998;padding:8px 8px 8px 8px;border-top:2px solid #0f0';
     const hdr = document.createElement('div');
     hdr.style.cssText = 'display:flex;justify-content:space-between;font-weight:bold;margin-bottom:4px;color:#fff';
-    hdr.innerHTML = 'Step Out Debug v1.0.5 <button onclick="this.closest(\'div\').parentElement.remove()" style="background:#555;color:#fff;border:none;padding:2px 8px;cursor:pointer;border-radius:3px">✕</button>';
+    hdr.innerHTML = 'Step Out Debug v1.0.6 <button onclick="this.closest(\'div\').parentElement.remove()" style="background:#555;color:#fff;border:none;padding:2px 8px;cursor:pointer;border-radius:3px">✕</button>';
     list = document.createElement('div');
     panel.appendChild(hdr);
     panel.appendChild(list);
@@ -45,7 +45,7 @@ const App = (() => {
     weatherData: null,
     dryWindowResult: null,
     isOnline: navigator.onLine,
-    version: '1.0.5-debug',
+    version: '1.0.6-debug',
   };
 
   async function init() {
@@ -56,13 +56,13 @@ const App = (() => {
       window.__bootErrors.forEach(e => DBG.err('BOOT: ' + e));
     }
 
-    DBG.info('app.js v1.0.5 running');
+    DBG.info('app.js v1.0.6 running');
     DBG.info('html ver: ' + (window.__STEPOUT_HTML_VER || 'UNKNOWN — old SW serving cached index.html'));
     DBG.info('online:' + navigator.onLine + ' ua:' + navigator.userAgent.slice(0,50));
 
     // Update reset bar status
     const bootSt = document.getElementById('__boot-status');
-    if (bootSt) bootSt.textContent = 'app.js v1.0.5 running';
+    if (bootSt) bootSt.textContent = 'app.js v1.0.6 running';
 
     // Heartbeat — proves the event loop is alive every second for 12s
     let hbCount = 0;
